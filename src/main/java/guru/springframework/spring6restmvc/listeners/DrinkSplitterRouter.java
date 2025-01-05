@@ -8,8 +8,14 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.kafka.support.SendResult;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.stereotype.Component;
+
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 /**
  * Created by jt, Spring Framework Guru.
@@ -24,6 +30,8 @@ public class DrinkSplitterRouter {
     @KafkaListener(groupId = "DrinkSplitterRouter", topics = KafkaConfig.ORDER_PLACED_TOPIC)
     public void receive(@Payload OrderPlacedEvent orderPlacedEvent) {
 
+        log.debug("Order Placed Event Received");
+
         if (orderPlacedEvent.getBeerOrderDTO() == null ||
                 orderPlacedEvent.getBeerOrderDTO().getBeerOrderLines() == null ||
                 orderPlacedEvent.getBeerOrderDTO().getBeerOrderLines().isEmpty()) {
@@ -35,6 +43,10 @@ public class DrinkSplitterRouter {
             switch (beerOrderLine.getBeer().getBeerStyle()) {
                 case LAGER:
                     log.debug("Splitting LAGER Order");
+                    sendIceColdBeer(beerOrderLine);
+                    break;
+                case PILSNER:
+                    log.debug("Splitting PILSNER Order");
                     sendIceColdBeer(beerOrderLine);
                     break;
                 case STOUT:
@@ -75,6 +87,7 @@ public class DrinkSplitterRouter {
 
     private void sendIceColdBeer(BeerOrderLineDTO beerOrderLineDTO) {
         // send ice cold beer
+        log.debug("Sending Ice Cold Beer Request");
         kafkaTemplate.send(KafkaConfig.DRINK_REQUEST_ICE_COLD_TOPIC, DrinkRequestEvent.builder()
                 .beerOrderLineDTO(beerOrderLineDTO)
                 .build());
@@ -82,6 +95,7 @@ public class DrinkSplitterRouter {
 
     private void sendColdBeer(BeerOrderLineDTO beerOrderLineDTO) {
         // send cold beer
+        log.debug("Sending Cold Beer Request");
         kafkaTemplate.send(KafkaConfig.DRINK_REQUEST_COLD_TOPIC, DrinkRequestEvent.builder()
                 .beerOrderLineDTO(beerOrderLineDTO)
                 .build());
@@ -89,6 +103,7 @@ public class DrinkSplitterRouter {
 
     private void sendCoolBeer(BeerOrderLineDTO beerOrderLineDTO) {
         // send cool beer
+        log.debug("Sending Cool Beer Request");
         kafkaTemplate.send(KafkaConfig.DRINK_REQUEST_COOL_TOPIC, DrinkRequestEvent.builder()
                 .beerOrderLineDTO(beerOrderLineDTO)
                 .build());

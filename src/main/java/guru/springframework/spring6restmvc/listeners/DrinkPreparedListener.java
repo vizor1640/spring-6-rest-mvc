@@ -20,6 +20,7 @@ public class DrinkPreparedListener {
 
     private final BeerOrderLineRepository beerOrderLineRepository;
 
+    @Transactional
     @KafkaListener(groupId = "DrinkPreparedListener", topics = KafkaConfig.DRINK_PREPARED_TOPIC)
     public void listen(DrinkPreparedEvent event) {
 
@@ -29,7 +30,7 @@ public class DrinkPreparedListener {
 
             beerOrderLine.setOrderLineStatus(BeerOrderLineStatus.COMPLETE);
 
-            beerOrderLineRepository.save(beerOrderLine);
+            beerOrderLineRepository.saveAndFlush(beerOrderLine);
         }, () -> log.error("Beer Order Line Not Found!"));
     }
 }

@@ -14,6 +14,7 @@ import guru.springframework.spring6restmvcapi.model.BeerOrderCreateDTO;
 import guru.springframework.spring6restmvcapi.model.BeerOrderDTO;
 import guru.springframework.spring6restmvcapi.model.BeerOrderUpdateDTO;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
@@ -28,6 +29,7 @@ import java.util.UUID;
 /**
  * Created by jt, Spring Framework Guru.
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class BeerOrderServiceJPA implements BeerOrderService {
@@ -49,10 +51,13 @@ public class BeerOrderServiceJPA implements BeerOrderService {
 
     @Override
     public BeerOrderDTO updateOrder(UUID beerOrderId, BeerOrderUpdateDTO beerOrderUpdateDTO) {
+        log.debug("Updating order id: " + beerOrderId);
+
         val order = beerOrderRepository.findById(beerOrderId).orElseThrow(NotFoundException::new);
 
         order.setCustomer(customerRepository.findById(beerOrderUpdateDTO.getCustomerId()).orElseThrow(NotFoundException::new));
         order.setCustomerRef(beerOrderUpdateDTO.getCustomerRef());
+        order.setPaymentAmount(beerOrderUpdateDTO.getPaymentAmount());
 
         beerOrderUpdateDTO.getBeerOrderLines().forEach(beerOrderLine -> {
 
@@ -82,9 +87,12 @@ public class BeerOrderServiceJPA implements BeerOrderService {
 
         BeerOrderDTO dto = beerOrderMapper.beerOrderToBeerOrderDto(beerOrderRepository.save(order));
 
+        log.debug("Payment Amount: " + beerOrderUpdateDTO.getPaymentAmount());
+
         if (beerOrderUpdateDTO.getPaymentAmount() != null){
+            log.debug("Sending order update event for order id: " + beerOrderId);
             applicationEventPublisher.publishEvent(OrderPlacedEvent.builder()
-                    .beerOrderDTO(dto));
+                    .beerOrderDTO(dto).build());
         }
 
         return dto;
@@ -92,12 +100,14 @@ public class BeerOrderServiceJPA implements BeerOrderService {
 
     @Override
     public BeerOrder createOrder(BeerOrderCreateDTO beerOrderCreateDTO) {
+        log.debug("Creating order for customer id: " + beerOrderCreateDTO.getCustomerId());
         Customer customer = customerRepository.findById(beerOrderCreateDTO.getCustomerId())
                 .orElseThrow(NotFoundException::new);
 
         Set<BeerOrderLine> beerOrderLines = new HashSet<>();
 
         beerOrderCreateDTO.getBeerOrderLines().forEach(beerOrderLine -> {
+            log.debug("Adding beerOrderLine: " + beerOrderLine.getBeerId());
             beerOrderLines.add(BeerOrderLine.builder()
                     .beer(beerRepository.findById(beerOrderLine.getBeerId()).orElseThrow(NotFoundException::new))
                     .orderQuantity(beerOrderLine.getOrderQuantity())
